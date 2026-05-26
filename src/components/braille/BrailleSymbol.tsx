@@ -1,6 +1,6 @@
 /**
  * @fileoverview Componente para visualizar símbolos Braille (cuadratín)
- * @author Kevin Palacios
+ * @author Carlos Troya
  * @version 1.0.0
  */
 
