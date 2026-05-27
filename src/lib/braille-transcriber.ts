@@ -176,7 +176,7 @@ export class SpanishToBrailleTranscriber implements IBrailleTranscriber {
         };
         processedTokens.push(numberIndicatorToken);
         inNumberSequence = true;
-      } else if (token.type !== TokenType.NUMBER && inNumberSequence) {
+      } else if (token.type !== TokenType.NUMBER && inNumberSequence && !this.isDecimalSeparator(tokens, i)) {
         inNumberSequence = false;
       }
       
@@ -206,6 +206,17 @@ export class SpanishToBrailleTranscriber implements IBrailleTranscriber {
     }
     
     return processedTokens;
+  }
+
+  /**
+   * Determina si una coma funciona como separador decimal dentro de una secuencia numérica.
+   */
+  private isDecimalSeparator(tokens: Token[], index: number): boolean {
+    return tokens[index].character === ',' &&
+      index > 0 &&
+      index < tokens.length - 1 &&
+      tokens[index - 1].type === TokenType.NUMBER &&
+      tokens[index + 1].type === TokenType.NUMBER;
   }
   
   /**

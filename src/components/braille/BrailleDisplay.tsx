@@ -1,6 +1,6 @@
 /**
  * @fileoverview Componente para mostrar texto Braille transcribido
- * @author Kevin Palacios
+ * @author Carlos Troya
  * @version 1.0.0
  */
 
