@@ -484,3 +484,469 @@ Para acceder al input de archivos y al textarea sin convertirlos en estado.
 
 Ocurre en `SpanishToBrailleTranscriber`, no en `TextInput`.
 
+## 16. Explicacion de las relaciones del diagrama de clases
+
+El diagrama de clases representa principalmente la logica del dominio del sistema, es decir, las clases e interfaces relacionadas con la transcripcion de texto español a Braille.
+
+En el diagrama aparecen varios tipos de relaciones UML. Cada una tiene una razon en el codigo.
+
+### 16.1 Implementacion de interfaz
+
+Relacion:
+
+```text
+IBrailleTranscriber <|.. SpanishToBrailleTranscriber
+```
+
+Significa:
+
+```text
+SpanishToBrailleTranscriber implementa IBrailleTranscriber.
+```
+
+En el codigo se observa asi:
+
+```ts
+export class SpanishToBrailleTranscriber implements IBrailleTranscriber
+```
+
+La interfaz `IBrailleTranscriber` define el contrato minimo que debe cumplir cualquier transcriptor Braille:
+
+- `transcribe()`
+- `validateInput()`
+- `getLastStatistics()`
+
+La clase `SpanishToBrailleTranscriber` es la implementacion concreta para español. La interfaz no contiene la logica; solo obliga a que la clase tenga esos metodos.
+
+Frase para exposicion:
+
+```text
+Esta relacion indica que SpanishToBrailleTranscriber cumple el contrato definido por IBrailleTranscriber.
+```
+
+Relacion:
+
+```text
+IBrailleMapper <|.. SpanishBrailleMapper
+```
+
+Significa:
+
+```text
+SpanishBrailleMapper implementa IBrailleMapper.
+```
+
+En el codigo:
+
+```ts
+export class SpanishBrailleMapper implements IBrailleMapper
+```
+
+`IBrailleMapper` define que todo mapeador debe poder:
+
+- Obtener un simbolo Braille.
+- Verificar si existe un mapeo.
+- Devolver todos los caracteres mapeados.
+
+`SpanishBrailleMapper` cumple ese contrato con una tabla especifica para caracteres del español.
+
+### 16.2 Composicion entre transcriptor y mapeador
+
+Relacion:
+
+```text
+SpanishToBrailleTranscriber *-- SpanishBrailleMapper
+```
+
+Significa:
+
+```text
+SpanishToBrailleTranscriber contiene un SpanishBrailleMapper.
+```
+
+En el codigo:
+
+```ts
+private mapper: SpanishBrailleMapper;
+
+constructor() {
+  this.mapper = new SpanishBrailleMapper();
+}
+```
+
+Se usa composicion porque el transcriptor crea internamente su mapeador y lo necesita para funcionar. El transcriptor depende del mapper para traducir cada caracter a su representacion Braille.
+
+Frase para exposicion:
+
+```text
+El transcriptor no guarda directamente la tabla Braille. Delega esa responsabilidad al mapper, que esta contenido dentro del transcriptor.
+```
+
+### 16.3 Agregacion o asociacion entre mapper y simbolos Braille
+
+Relacion:
+
+```text
+SpanishBrailleMapper o-- BrailleSymbol
+```
+
+Significa:
+
+```text
+SpanishBrailleMapper administra o agrupa objetos BrailleSymbol.
+```
+
+En el codigo:
+
+```ts
+private characterMap: Map<string, BrailleSymbol>;
+```
+
+El mapper tiene un mapa donde cada caracter se asocia con un `BrailleSymbol`.
+
+Ejemplo conceptual:
+
+```text
+"a" -> BrailleSymbol de la letra A
+"b" -> BrailleSymbol de la letra B
+"1" -> BrailleSymbol del numero 1
+```
+
+Esta relacion puede verse como agregacion porque el mapper administra una coleccion de simbolos. Tambien podria representarse como una asociacion simple, pero la idea principal es que el mapper conoce y devuelve objetos `BrailleSymbol`.
+
+### 16.4 Dependencias del transcriptor
+
+Relaciones:
+
+```text
+SpanishToBrailleTranscriber ..> Token
+SpanishToBrailleTranscriber ..> BrailleOutput
+SpanishToBrailleTranscriber ..> TranscriptionConfig
+```
+
+Estas son relaciones de dependencia. Significan que `SpanishToBrailleTranscriber` usa esas estructuras, pero no necesariamente las contiene como atributos permanentes.
+
+#### Dependencia con `Token`
+
+El transcriptor usa tokens para representar cada caracter procesado.
+
+En el codigo:
+
+```ts
+private tokenizeText(text: string): Token[]
+private processTokens(tokens: Token[], config: TranscriptionConfig): Token[]
+```
+
+Un token guarda:
+
+- El caracter original.
+- Su tipo.
+- Su posicion.
+- Su simbolo Braille, si existe.
+
+#### Dependencia con `BrailleOutput`
+
+El metodo principal del transcriptor devuelve un `BrailleOutput`.
+
+En el codigo:
+
+```ts
+public transcribe(...): BrailleOutput
+```
+
+`BrailleOutput` representa el resultado final de la transcripcion.
+
+#### Dependencia con `TranscriptionConfig`
+
+El transcriptor usa configuracion para decidir algunos aspectos del proceso.
+
+En el codigo:
+
+```ts
+config?: Partial<TranscriptionConfig>
+```
+
+y tambien:
+
+```ts
+const fullConfig: TranscriptionConfig = { ... }
+```
+
+Esto permite que el comportamiento del transcriptor pueda configurarse sin cambiar directamente la logica interna.
+
+### 16.5 Asociaciones de `BrailleOutput`
+
+Relaciones:
+
+```text
+BrailleOutput --> BrailleSymbol
+BrailleOutput --> Token
+BrailleOutput --> TranscriptionStatistics
+```
+
+Significan que `BrailleOutput` esta compuesto por datos relacionados con la transcripcion.
+
+En el codigo:
+
+```ts
+export interface BrailleOutput {
+  originalText: string;
+  symbols: BrailleSymbol[];
+  tokens: Token[];
+  brailleText: string;
+  statistics: TranscriptionStatistics;
+}
+```
+
+Explicacion:
+
+- `symbols`: lista de simbolos Braille generados.
+- `tokens`: lista de tokens procesados.
+- `statistics`: estadisticas de la transcripcion.
+
+Aunque `BrailleOutput` sea una interfaz sin metodos, es importante en el diagrama porque define la estructura del resultado que circula desde la logica hacia la interfaz.
+
+### 16.6 Asociaciones de `Token`
+
+Relaciones:
+
+```text
+Token --> TokenType
+Token --> BrailleSymbol
+```
+
+En el codigo:
+
+```ts
+export interface Token {
+  character: string;
+  type: TokenType;
+  brailleSymbol?: BrailleSymbol;
+  position: number;
+}
+```
+
+`Token` se relaciona con `TokenType` porque cada token tiene un tipo:
+
+- `LETTER`
+- `NUMBER`
+- `ACCENTED_VOWEL`
+- `PUNCTUATION`
+- `SPACE`
+- `UNKNOWN`
+
+Tambien se relaciona con `BrailleSymbol` porque un token puede tener un simbolo Braille asociado.
+
+El signo `?` en:
+
+```ts
+brailleSymbol?: BrailleSymbol;
+```
+
+indica que el simbolo Braille es opcional. Esto es util porque durante el procesamiento puede existir un token antes de que se le asigne su simbolo Braille.
+
+## 17. Patrones e ideas de diseño aplicadas
+
+El proyecto no implementa patrones complejos de forma estricta, pero si aplica varias ideas y patrones comunes de diseño de software.
+
+### 17.1 Separacion de responsabilidades
+
+Este es el principio mas importante del diseño.
+
+Cada parte tiene una responsabilidad clara:
+
+```text
+TextInput
+-> Captura texto y eventos de usuario.
+
+SpanishToBrailleTranscriber
+-> Coordina la transcripcion.
+
+SpanishBrailleMapper
+-> Administra la tabla de equivalencias.
+
+BrailleDisplay
+-> Muestra el resultado.
+
+BrailleSymbol
+-> Dibuja un simbolo Braille individual.
+```
+
+Esto evita que un solo archivo haga todo. Por ejemplo, `TextInput` no deberia traducir a Braille, porque esa no es su responsabilidad.
+
+Frase para exposicion:
+
+```text
+La aplicacion aplica separacion de responsabilidades, porque divide la captura de datos, la logica de transcripcion, el mapeo y la visualizacion en componentes distintos.
+```
+
+### 17.2 Arquitectura por capas
+
+La estructura general del proyecto sigue una arquitectura por capas:
+
+```text
+Capa de presentacion
+-> React / Next.js / componentes .tsx
+
+Capa de logica de negocio
+-> src/lib
+
+Capa de modelo de datos
+-> src/types
+```
+
+Esta organizacion permite entender mejor donde esta cada responsabilidad.
+
+Ventaja:
+
+```text
+La logica de transcripcion puede probarse sin depender de la interfaz grafica.
+```
+
+### 17.3 Programacion contra interfaces
+
+El uso de `IBrailleTranscriber` e `IBrailleMapper` permite que las clases concretas dependan de contratos.
+
+Ejemplo:
+
+```text
+IBrailleTranscriber define que debe hacer un transcriptor.
+SpanishToBrailleTranscriber define como lo hace para español.
+```
+
+Esto facilita extender el sistema en el futuro.
+
+Por ejemplo, podria existir:
+
+```ts
+class EnglishToBrailleTranscriber implements IBrailleTranscriber
+class BrailleToSpanishTranscriber implements IBrailleTranscriber
+```
+
+Todas esas clases tendrian el mismo contrato, pero distinta implementacion.
+
+Esta idea se relaciona con el principio de inversion de dependencias, aunque en este proyecto se aplica de forma simple.
+
+### 17.4 Patron Strategy, aplicado de forma parcial
+
+El patron Strategy consiste en definir una familia de algoritmos bajo una misma interfaz y permitir intercambiarlos.
+
+En este proyecto se puede interpretar de forma parcial con:
+
+```text
+IBrailleTranscriber
+-> contrato general de transcripcion
+
+SpanishToBrailleTranscriber
+-> estrategia concreta para español a Braille
+```
+
+Actualmente solo existe una estrategia concreta, pero el diseño deja abierta la posibilidad de agregar otras.
+
+Ejemplo futuro:
+
+```text
+SpanishToBrailleTranscriber
+EnglishToBrailleTranscriber
+BrailleToSpanishTranscriber
+```
+
+Todas podrian implementar `IBrailleTranscriber`.
+
+Frase prudente para exposicion:
+
+```text
+No se implementa un Strategy completo con seleccion dinamica de algoritmos, pero el uso de interfaces permite una estructura similar, preparada para futuras estrategias de transcripcion.
+```
+
+### 17.5 Patron Facade, aplicado de forma simple
+
+`SpanishToBrailleTranscriber` puede verse como una fachada simple para el proceso de transcripcion.
+
+Desde fuera, el componente `Home` solo necesita llamar:
+
+```ts
+transcriber.transcribe(inputText)
+```
+
+Pero internamente el transcriptor hace varios pasos:
+
+```text
+validar entrada
+tokenizar texto
+procesar tokens
+consultar el mapper
+generar simbolos
+calcular estadisticas
+devolver BrailleOutput
+```
+
+La clase oculta esa complejidad y ofrece un metodo principal sencillo.
+
+Frase para exposicion:
+
+```text
+SpanishToBrailleTranscriber funciona como una fachada simple porque expone un metodo transcribe(), mientras internamente coordina validacion, tokenizacion, mapeo y generacion del resultado.
+```
+
+### 17.6 Uso de callbacks en React
+
+En la capa de presentacion aparece una idea comun en React: comunicacion de hijo a padre mediante callbacks.
+
+`TextInput` recibe:
+
+```ts
+onChange
+onTranscribe
+```
+
+Cuando ocurre una accion, el componente hijo no modifica directamente el estado global. En lugar de eso, llama a las funciones que le paso el padre.
+
+Ejemplo:
+
+```text
+TextInput
+-> onChange(newValue)
+-> Home actualiza inputText
+```
+
+Esto mantiene el flujo de datos claro:
+
+```text
+El padre mantiene el estado.
+El hijo muestra datos y emite eventos.
+```
+
+### 17.7 Resumen de patrones y decisiones
+
+```text
+Separacion de responsabilidades
+-> Cada clase o componente tiene una funcion concreta.
+
+Arquitectura por capas
+-> Presentacion, logica de negocio y modelo de datos.
+
+Programacion contra interfaces
+-> IBrailleTranscriber e IBrailleMapper definen contratos.
+
+Strategy parcial
+-> La interfaz permite futuras estrategias de transcripcion.
+
+Facade simple
+-> SpanishToBrailleTranscriber oculta los pasos internos del proceso.
+
+Callbacks en React
+-> TextInput se comunica con Home sin manejar directamente la transcripcion.
+```
+
+## 18. Guion corto para explicar el diagrama de clases
+
+```text
+El diagrama de clases muestra principalmente la logica del dominio del transcriptor. Las interfaces IBrailleTranscriber e IBrailleMapper funcionan como contratos. SpanishToBrailleTranscriber implementa el contrato de transcripcion y SpanishBrailleMapper implementa el contrato de mapeo.
+
+La relacion mas importante es la composicion entre SpanishToBrailleTranscriber y SpanishBrailleMapper, porque el transcriptor contiene un mapper y lo usa para convertir cada caracter a su simbolo Braille.
+
+Tambien aparecen estructuras de datos como Token, BrailleSymbol y BrailleOutput. Estas no tienen metodos porque son interfaces de datos; su funcion es definir la forma de los objetos que circulan durante la transcripcion.
+
+En cuanto a patrones, el diseño aplica separacion de responsabilidades y arquitectura por capas. Ademas, el transcriptor funciona como una fachada simple, porque desde fuera solo se llama a transcribe(), aunque internamente realiza validacion, tokenizacion, procesamiento y mapeo. Tambien hay una idea similar a Strategy, ya que las interfaces permitirian agregar otros transcriptores en el futuro.
+```
