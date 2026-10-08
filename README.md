@@ -1,6 +1,6 @@
 # Transcriptor Español a Braille - Primer Bimestre
 
-Una aplicación web moderna para convertir texto español a su representación en el sistema Braille de 6 puntos, desarrollada con las mejores tecnologías y prácticas del mercado.
+Una aplicación web moderna para convertir texto español a su representación en el sistema Braille de 6 puntos, desarrollada con las tecnologías optimizadas para el tipo de aplicación web.
 
 ## 🚀 Tecnologías Utilizadas
 
